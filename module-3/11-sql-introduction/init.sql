@@ -4,6 +4,7 @@
 
 -- All queries have a certain order to them. This one, which you'll complete with your instructor, creates a table, defines all of its columns, and determines which data type each column will be. We also have to decide whether a column allows null data and what the primary key is. 
 
+-- script for create city
 CREATE TABLE cities (
     cid SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     city_name VARCHAR(36) NOT NULL,
@@ -12,6 +13,7 @@ CREATE TABLE cities (
     is_capital BOOLEAN NOT NULL DEFAULT FALSE,
     trivia VARCHAR(255) NULL
 );
+ 
 
 /*
     In this statement:
