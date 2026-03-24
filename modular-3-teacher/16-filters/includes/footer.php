@@ -8,8 +8,4 @@
 </body>
 </html>
 
-<?php 
-
-// Finally, we must always close our connection to the database.
-db_disconnect($conn);
-?>
+<?php db_disconnect($connection); ?>
