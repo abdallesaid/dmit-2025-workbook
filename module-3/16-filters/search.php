@@ -1,29 +1,46 @@
 <?php
-// GIVE TO STUDENTS TO START LESSON
+
 $title = "Search";
 include 'includes/header.php';
-include 'includes/continents.php';
 
-$country_search = isset($_GET['country-search']) ? trim($_GET['country-search']) : '';
+$continents = array(
+    1 => "Latin America",
+    2 => "North America &amp; Oceania",
+    3 => "Western Europe",
+    4 => "Middle East",
+    5 => "Africa",
+    6 => "South Asia",
+    7 => "Eastern Europe &amp; Central Asia",
+    8 => "East Asia"
+);
 
+// Country Name Search
+$country_search = isset($_GET['country-search']) ? trim($_GET['country-search']) : "";
+
+// Our continents are already in an array in our included country-card.php file. The 'All Continents' option will have a value of "", so it will be our default value if nothing else is chosen. 
 $selected_continents = isset($_GET['continents']) ? $_GET['continents'] : array();
 
-$wellbeing_score = $_GET['wellbeing-score'] ?? '';
-$wellbeing_value = $_GET['wellbeing-value'] ?? '';
+// Wellbeing Variables
+$wellbeing_score = $_GET['wellbeing-score'] ?? "";
+$wellbeing_value = $_GET['wellbeing-value'] ?? "";
 
+// Life Expectancy Variables
 $min = $_GET['life-expectancy-min'] ?? 50;
 $max = $_GET['life-expectancy-max'] ?? 90;
+
 ?>
 <!-- Introduction Area -->
 <h2 class="display-5">Browse Our Data</h2>
 <p class="mb-5">Explore our data below by country name, continents, wellbeing score, and average lifespan. To get started, pick the options you'd like to use and click the "Search" button. This will show you the filtered results based upon what you selected.</p>
 
 <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="GET" class="mb-5 border border-success p-3 rounded shadow-sm">
+
     <h3 class="display-6">Advanced Search</h3>
 
     <!-- Country Name Search -->
     <fieldset class="my-5">
         <legend class="fs-5">Search By Country</legend>
+
         <div class="mb-3">
             <label for="country-search" class="form-label">Enter country name:</label>
             <input type="text" id="country-search" name="country-search" value="<?php echo $country_search; ?>" class="form-control">
@@ -58,26 +75,30 @@ $max = $_GET['life-expectancy-max'] ?? 90;
         <div class="mb-3">
             <label for="wellbeing-score" class="form-label">Only show countries with a score:</label>
             <select name="wellbeing-score" id="wellbeing-score" class="form-select">
-                <option value="greater" <?php if ($wellbeing_score == "greater") { echo "selected"; } ?> >above</option>
-                <option value="less" <?php if ($wellbeing_score == "less") { echo "selected"; } ?> >below</option>
+                <option value="greater" <?php if ($score == "greater")
+                    echo "selected"; ?>>above</option>
+                <option value="less" <?php if ($score == "less")
+                    echo "selected"; ?>>below</option>
             </select>
         </div>
 
         <!-- This will be the number or the threshold for the wellbeing score. -->
         <div class="mb-3">
             <label for="wellbeing-value" class="form-label">the following value:</label>
-            <input type="number" name="wellbeing-value" id="wellbeing-value" min="1" max="10" value="<?php echo $wellbeing_value; ?>" class="form-control">
+            <input type="number" name="wellbeing-value" id="wellbeing-value" min="1" max="10" value="<?php echo $value; ?>" class="form-control">
         </div>
     </fieldset>
 
     <!-- Average Life Expectancy -->
     <fieldset class="my-5">
         <legend class="fs-5">Life Expectancy</legend>
+
         <!-- Minimum Age -->
         <div class="mb-3">
             <label for="life-expectancy-min" class="form-label">Show results with a minimum life expectancy of:</label>
             <input type="number" id="life-expectancy-min" name="life-expectancy-min" value="<?php echo $min; ?>" min="50" max="90" class="form-control">
         </div>
+
         <!-- Maximum Age -->
         <div class="mb-3">
             <label for="life-expectancy-max" class="form-label">and a maximum life expectancy of:</label>
@@ -91,77 +112,149 @@ $max = $_GET['life-expectancy-max'] ?? 90;
     </div>
 </form>
 
+<!-- Results -->
 <?php
+
+/*
+   If the user chose to include everything, their query would look something like this:
+
+   SELECT * FROM happiness_index WHERE 1 = 1
+   AND country LIKE '%$country%'
+   AND continent IN ($continents)
+   AND wellbeing (> or <) $wellbeing_value
+   AND life_expectancy BETWWEN $min AND $max
+
+   `WHERE 1 = 1` is a syntactical trick for building dynamic queries. Because 1=1 always resolves as TRUE, it doesn't really affect the outcome of anything; however, it lets us start any line that comes after it with AND. This way, we don't have to keep track of whether or not we've included our WHERE clause yet and don't have to worry about the 'grammar' of SQL.
+*/
+
 if (isset($_GET['submit'])) {
+
     echo '<section class="row justify-content-center">';
-    echo '<h2 class="display-5">Results</h2>';
+    echo '<h2 class="display-5 my-5">Results</h2>';
 
-    $sql = "SELECT * FROM happiness_index WHERE 1=1";
+    $query = "SELECT * FROM happiness_index WHERE 1 = 1";
 
-    // country name search
-    if ($country_search != '') {
-        $country_encoded = htmlspecialchars($country_search);
-        $sql .= " AND country LIKE '%$country_encoded%'";
+    // Because we're building a dynamic query, we may have a different number of placeholders (?s) depending upon what the user chooses to fill out in the search form. Therefore, we're creating this little array to keep track of how many placeholders we need. 
+    $parameters = [];
+
+    // Similarly, we also need to say what data types all of our parameters are. This string will be appended with the correct data types whenever we add parameters. 
+    $types = '';
+
+    // BIG NOTE: We are not doing a lot in the way of form validation. In the real world, we would need to do robust validation and sanitisation here!
+
+    // Country Search
+    if (!empty($country_search) || $country_search != "") {
+        // We cannot use " AND country LIKE '%?%'" because MariaDB will think we're just looking for question marks in the country name. Instead, we need to use a MySQL aggregate function. This lets MariaDB know that the ? is a placeholder value, not the thing we're looking for.
+        $query .= " AND country LIKE CONCAT('%', ?, '%')";
+
+        // Because this is an array, we can use the assignment operator here and PHP will know to append this value (i.e. add it to the end of the array) rather than overwrite the whole thing.
+        $parameters[] = $country_search;
+
+        // We'll also add the 'string' data type here.
+        $types .= 's';
     }
-    // continents checkboxes
+
+
+    // Continent Filter
+
+    // If the user chose 'All Continents', which has a value of "", we will skip this entire block and just not add it to our query. 
     if (!empty($selected_continents) && !in_array("", $selected_continents)) {
-        $sql .= " AND continent IN (";
+        // Because this is a field of checkboxes, we're working with an array. We need to check to see how many things are in our $selected_continents array. We will then need to use as many placeholders (?s) as there are things checked off by the user.
+
+        // ex. If the user chooses Africa, Middle East, and Latin America, this will add three ?s to our placeholders. Our final string will be '?, ?, ?'. 
+        $placeholders = implode(',', array_fill(0, count($selected_continents), '?'));
+        $query .= " AND continent IN ($placeholders)";
+        foreach ($selected_continents as $key => $cont) {
+            // Ensure we pass variables by reference.
+            $parameters[] = &$selected_continents[$key];
+            $types .= 'i';
+        }
+    }
+
+
+
+    // Wellbeing Filter
+    if ($value != "") {
+        // This is a ternery that says if our $score is "greater" we'll use the > (greater than) operator, otherwise we'll use less than (<).
+        $operator = $score == "greater" ? ">" : "<";
+        $query .= " AND wellbeing $operator ?";
+        $parameters[] = &$value;
+        // This is a double data type.
+        $types .= 'd';
+    }
+
+
+    // Life Expectancy Filter
+
+    // If we do NOT have our default parameters, we'll add this to the query. 
+    if ($min != 50 && $max != 90) {
+        $query .= " AND life_expectancy BETWEEN ? AND ?";
+
+        // We will always have two values to add with a range query. 
+        $parameters[] = &$min;
+        $parameters[] = &$max;
+
+        // Both of our values are doubles.
+        $types .= 'dd';
+    }
+
+    /*
+    
+    FOR DEBUGGING
+
+    If you'd like to see what the query looks like with different options, you can echo it out for testing. 
+
+    echo "<p>" . $query . "</p>";
+    var_dump($parameters);
+    echo "<p>" . $types . "</p>";
+
+    */
+
+    // Prepare and execute the SQL statement (query).
+    if ($statement = $connection->prepare($query)) {
+        // Technically, the user can submit the search form without filling anything out (i.e. without any parameters or conditions). If they do, we don't need to bind our parameters, we just need to fetch the whole dang table. 
+      if ($types != "") {
+         $bind_names = [];
+         $bind_names[] = $types;
+
+         foreach ($parameters as $key => $value) {
+            // What is the & here? The & means that we're passing our value by reference. In PHP, passing by reference means you're giving a function direct access to the original variable - not just a copy of its value. We need this because we need to bind the original value to our placeholder (?) when we're using prepared statements.
+            $bind_names[] = &$parameters[$key];
+
+            /*
+               passing by value - this is like handing someone a photocopy of something. If they scribble all over it, the original doesn't change.
+
+               passing by reference - this is like giving someone the original document.
+             */
+         }
+         call_user_func_array([$statement, 'bind_param'], $bind_names);
+      }
         
-        $string = '';
-        foreach ($selected_continents as $key => $value) {
-            // echo "<p>$key - $value</p>";
-            // $string .= "$value,";
-            // $string .= htmlspecialchars($value) . ",";
+        $statement->execute();
+        $result = $statement->get_result();
 
-            if (is_numeric($value)) {
-                 $string .= "$value,";
+        // Displaying Results
+        if ($result->num_rows > 0) {
+
+            while ($row = $result->fetch_assoc()) {
+                echo "<div class=\"col-md-6 col-xl-4 mb-4\">";
+                include('includes/country-card.php');
+                echo "</div>";
             }
-        }
-        $sql .= rtrim($string, ",");
-
-        $sql .= ")";
-    }
-
-
-    // wellbeing
-    if (is_numeric($wellbeing_value)) {
-        $sql .= " AND wellbeing";
-
-        if ($wellbeing_score == 'greater') {
-            $sql .= ' > ';
         } else {
-            $sql .= ' < ';
-        }
+         echo "<div class=\"col-md-6\"> \n
+            <h2>No results found.</h2> \n
+            <p>No countries match your search criteria.</p> \n
+            </div>";
+      }
 
-        // $sql .= $wellbeing_score == 'greater' ? " > " : " < " ;
-        $sql .= $wellbeing_value;
-    }
-
-    // life expectancy
-    if (($min != 50 && is_numeric($min)) || ($max != 90 && is_numeric($max))) {
-        $sql .= " AND life_expectancy BETWEEN $min AND $max";
-    }
-
-
-    echo "<p>$sql</p>";
-    $result = mysqli_query($conn, $sql);
-
-    if ($conn->error ) {
-        echo '<p>Oh no! There was an issue retrieving the data.</p>';
-    } elseif ($result->num_rows == 0) {
-        echo '<p>No results founds. Try adjusting a search term.</p>';
     } else {
-        while ($row = $result->fetch_assoc()) {
-            echo '<div class="col-md-6 col-xl-4 mb-4">';
-            include 'includes/country-card.php';
-            echo "</div>";
-        }
+        echo "<div class=\"col-md-6\">";
+        echo "<h2>Oops!</h2>";
+        echo "<p>There was an error retrieving your results.</p>";
+        echo "</div>";
     }
 
+} // end of 'if the user hit submit' condition
 
-    echo "</section>";
-}
-?>
-
-
-<?php include('includes/footer.php'); ?>
+include('includes/footer.php'); ?>

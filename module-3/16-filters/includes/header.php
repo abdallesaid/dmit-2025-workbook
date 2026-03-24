@@ -1,7 +1,7 @@
 <?php
 // Establish a connection to the database
 require_once dirname(__DIR__, 3) . '/data/connect.php';
-$conn = db_connect();
+$connection = db_connect();
 ?>
 <!doctype html>
 <html lang="en">
@@ -30,4 +30,4 @@ $conn = db_connect();
 
         <main class="container">
             <section class="row justify-content-center">
-                <div class="col-md-10 col-lg-8">
+                <div class="col-md-10">

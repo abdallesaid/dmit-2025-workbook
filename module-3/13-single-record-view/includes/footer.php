@@ -1,8 +1,3 @@
-<?php
-// Establish a connection to the database
-require_once dirname(__DIR__, 3) . '/data/connect.php';
-$conn = db_connect();
-?>
 </div>
         </section>
     </main>
@@ -13,8 +8,4 @@ $conn = db_connect();
 </body>
 </html>
 
-<?php 
-
-// Finally, we must always close our connection to the database.
-db_disconnect($conn);
-?>
+<?php db_disconnect($connection); ?>
