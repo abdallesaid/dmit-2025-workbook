@@ -77,9 +77,7 @@ $connection = db_connect();
                 }
 
                 ?>
-
                 
-
                 <h3 class="mt-4">Question 3: Which cities are located in the province of "QC" (Quebec)?</h3>
 $
                 <?php
